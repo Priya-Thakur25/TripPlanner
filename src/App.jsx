@@ -3,7 +3,7 @@ import Hero from "./components/custom/Hero"
 
 function App() {
   return (
-    <div className="">
+    <div className="git">
       <Hero/>
     </div>
   )
