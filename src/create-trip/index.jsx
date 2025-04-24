@@ -1,15 +1,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AI_PROMPT, SelectBudgetOptions, SelectTravelsList } from "@/constants/Options";
+import {
+  AI_PROMPT,
+  SelectBudgetOptions,
+  SelectTravelsList,
+} from "@/constants/Options";
 import axios from "axios";
 import { toast } from "sonner";
-import { ChatSession } from "@google/generative-ai";
 import { chatSession } from "@/services/AIModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { FcGoogle } from "react-icons/fc";
+import { GoogleLogin, useGoogleLogin } from "@react-oauth/google";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/services/FireBase";
+import { VscLoading } from "react-icons/vsc";
+import { useNavigate } from "react-router-dom";
+// import { error } from "console";
 
 function CreateTrip() {
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
+  const [opendilog, setOpenDilog] = useState(false);
+  const [loading,setloading] = useState(false);
   const [formData, setformData] = useState([
     {
       location: "",
@@ -19,6 +39,8 @@ function CreateTrip() {
     },
   ]);
 
+
+  const navigate = useNavigate();
   const fetchSuggestions = async (value) => {
     try {
       const apiKey = "AlzaSy2J9pFOTvXdGG4BlsS9Oo6U1sRZ8jeetrT"; // Set this in your .env file
@@ -59,27 +81,71 @@ function CreateTrip() {
     console.log(formData);
   }, [formData]);
 
-  const onGenerateTrip = async() => {
-    if(formData?.days > 7){
-      toast("Please Choose trip days less than 7")
-    }
-    if(formData?.days > 7 && !formData?.budget || !formData?.people || !formData?.location){
-      toast("Please fill all details")
+  const login = useGoogleLogin({
+    onSuccess: (sucRes) => getUserProfile(sucRes),
+    onError: (error) => console.log("Error",error)
+  })
+
+  const onGenerateTrip = async () => {
+    const user = localStorage.getItem("user");
+    if (!user) {
+      setOpenDilog(true);
       return;
     }
-    const FINAL_PROMPT = AI_PROMPT
-    .replace('{location}', formData?.location)
-    .replace('{days}', formData?.days)
-    .replace('{people}', formData?.people)
-    .replace('{budget}', formData?.budget)
-    .replace('{days}', formData?.days)
+    if (formData?.days > 5) {
+      toast("Please Choose trip days less than 7");
+    }
+    if (
+      (formData?.days > 5 && !formData?.budget) ||
+      !formData?.people ||
+      !formData?.location
+    ) {
+      toast("Please fill all details");
+      return;
+    }
+    setloading(true);
+    const FINAL_PROMPT = AI_PROMPT.replace("{location}", formData?.location)
+      .replace("{days}", formData?.days)
+      .replace("{people}", formData?.people)
+      .replace("{budget}", formData?.budget)
+      .replace("{days}", formData?.days);
 
     console.log(FINAL_PROMPT);
 
     const result = await chatSession.sendMessage(FINAL_PROMPT);
-    console.log("--",result?.response?.text());
+    console.log(result?.response?.text());
+    setloading(false);
+    SaveAiTrip(result?.response?.text());
+  };
+
+  const SaveAiTrip = async(TripData) => {
+    setloading(true);
+    const user = JSON.parse(localStorage.getItem('user'));
+    const docId = Date.now().toString();
+
+    await setDoc(doc(db, "AiTrips", docId), {
+     userSelection: formData,
+     tripData: JSON.parse(TripData),
+     userEmail: user?.email,
+     id:docId
+    });
+    setloading(false);
+    navigate('/view-trip/'+ docId);
   }
-  
+  const getUserProfile = (tokenInfo) => {
+    axios.get(`https://www.googleapis.com/oauth2/v1/userinfo?acess_token=${tokenInfo?.access_token}`,{
+      headers:{
+        Authorization: `Bearer ${tokenInfo?.access_token}`,
+        Accept: 'Application/json'
+      }
+    }).then((resp) => {
+      console.log(resp)
+      localStorage.setItem('user',JSON.stringify(resp.data));
+      setOpenDilog(false);
+      onGenerateTrip();
+    })
+  }
+
   return (
     <div className="px-56 p-10">
       <h2 className="text-3xl font-bold">
@@ -132,7 +198,10 @@ function CreateTrip() {
           {SelectBudgetOptions.map((item, index) => (
             <div
               key={index}
-              className={`border p-3 cursor-pointer hover:shadow-xl rounded-lg ${formData?.budget == item.title && 'border-gray-500 rounded-xl shadow-lg'}`}
+              className={`border p-3 cursor-pointer hover:shadow-xl rounded-lg ${
+                formData?.budget == item.title &&
+                "border-gray-500 rounded-xl shadow-lg"
+              }`}
               onClick={() => setformData({ ...formData, budget: item.title })}
             >
               <h2 className="text-3xl">{item.icon}</h2>
@@ -151,8 +220,11 @@ function CreateTrip() {
           {SelectTravelsList.map((item, index) => (
             <div
               key={index}
-              className={`border p-3 cursor-pointer hover:shadow-xl rounded-lg ${formData?.people == item.title && 'border-gray-500 rounded-xl shadow-lg'}`}
-              onClick={() => setformData({ ...formData, people: item.title})}
+              className={`border p-3 cursor-pointer hover:shadow-xl rounded-lg ${
+                formData?.people == item.title &&
+                "border-gray-500 rounded-xl shadow-lg"
+              }`}
+              onClick={() => setformData({ ...formData, people: item.people })}
             >
               <h2 className="text-3xl">{item.icon}</h2>
               <h2 className="text-xl font-bold">{item.title}</h2>
@@ -163,8 +235,22 @@ function CreateTrip() {
       </div>
 
       <div className="my-10 flex justify-end">
-        <Button onClick={onGenerateTrip}>Generate Trip</Button>
+        <Button disabled={loading} onClick={onGenerateTrip}>{loading? <VscLoading className="animate-spin"/> : "Generate Trip"}</Button>
       </div>
+
+      <Dialog open={opendilog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle></DialogTitle>
+            <div className="px-5">
+              <img src="/logo.svg" className="mb-2"/>
+              <h2 className="text-lg text-gray-600 font-bold mx-2">Sign in with Google</h2>
+              <p className="text-gray-500 mx-1">Sign in to the App with Google Authentication securely</p>
+              <Button className="mt-4 w-full rounded-full" onClick={login}><FcGoogle className="h-7 w-7"/>Sign in with Google</Button>
+            </div>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
