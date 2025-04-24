@@ -120,9 +120,6 @@ function CreateTrip() {
 
   const SaveAiTrip = async(TripData) => {
     setloading(true);
-    if(loading){
-      toast("Please wait....We are working on it")
-    }
     const user = JSON.parse(localStorage.getItem('user'));
     const docId = Date.now().toString();
 
@@ -224,7 +221,7 @@ function CreateTrip() {
             <div
               key={index}
               className={`border p-3 cursor-pointer hover:shadow-xl rounded-lg ${
-                formData?.people == item.title &&
+                formData?.people == item.people &&
                 "border-gray-500 rounded-xl shadow-lg"
               }`}
               onClick={() => setformData({ ...formData, people: item.people })}
@@ -238,7 +235,7 @@ function CreateTrip() {
       </div>
 
       <div className="my-10 flex justify-end">
-        <Button disabled={loading} onClick={onGenerateTrip}>{loading? <VscLoading className="animate-spin"/> : "Generate Trip"}</Button>
+        <Button disabled={loading} onClick={onGenerateTrip}>{loading? <VscLoading onClick={loading ? toast("Please wait....We are working on it ") : toast("Generated")} className="animate-spin"/> : "Generate Trip"}</Button>
       </div>
 
       <Dialog open={opendilog}>
