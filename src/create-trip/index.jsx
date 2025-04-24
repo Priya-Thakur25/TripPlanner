@@ -120,7 +120,7 @@ function CreateTrip() {
 
   const SaveAiTrip = async(TripData) => {
     setloading(true);
-    if(setloading){
+    if(loading){
       toast("Please wait....We are working on it")
     }
     const user = JSON.parse(localStorage.getItem('user'));
