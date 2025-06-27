@@ -43,7 +43,7 @@ function CreateTrip() {
   const navigate = useNavigate();
   const fetchSuggestions = async (value) => {
     try {
-      const apiKey = "AlzaSy2J9pFOTvXdGG4BlsS9Oo6U1sRZ8jeetrT"; // Set this in your .env file
+      const apiKey = "AlzaSyfQyqSuE601yWYHHlM68XunXcDlnLbszNj"; // Set this in your .env file
       const res = await axios.get(
         "https://maps.gomaps.pro/maps/api/place/queryautocomplete/json",
         {

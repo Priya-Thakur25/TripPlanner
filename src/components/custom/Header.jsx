@@ -51,7 +51,7 @@ function Header() {
 
   return (
     <div className="p-3 shadow-lg flex justify-between px-5">
-      <img src="/logo.svg" />
+      <h1 className="font-bold text-3xl ">🛩️ Trip Planner</h1>
       {user ? (
         <div className="flex items-center justify-center gap-3">
           <a href="/create-trip">
